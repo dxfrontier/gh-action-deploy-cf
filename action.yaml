@@ -1,0 +1,199 @@
+name: Deploy to Cloud Foundry
+description: ''
+inputs:
+  # Mandatory
+  CF_API_DEV:
+    description: 'API endpoint for the development environment'
+    required: true
+
+  CF_ORG_DEV:
+    description: 'Organization for the development environment'
+    required: true
+
+  CF_SPACE_DEV:
+    description: 'Space for the development environment'
+    required: true
+
+  CF_USERNAME_DEV:
+    description: 'Username for the development environment'
+    required: true
+
+  CF_PASSWORD_DEV:
+    description: 'Password for the development environment'
+    required: true
+
+  CF_API_PROD:
+    description: 'API endpoint for the production environment'
+    required: true
+
+  CF_ORG_PROD:
+    description: 'Organization for the production environment'
+    required: true
+
+  CF_SPACE_PROD:
+    description: 'Space for the production environment'
+    required: true
+
+  CF_USERNAME_PROD:
+    description: 'Username for the production environment'
+    required: true
+
+  CF_PASSWORD_PROD:
+    description: 'Password for the production environment'
+    required: true
+
+  CF_IAS_ORIGIN:
+    description: 'IAS origin for authentication'
+    required: true
+
+  # ############################################################
+
+  # Not mandatory
+  CF_API_QA:
+    description: 'API endpoint for the QA environment'
+    required: false
+
+  CF_ORG_QA:
+    description: 'Organization for the QA environment'
+    required: false
+
+  CF_SPACE_QA:
+    description: 'Space for the QA environment'
+    required: false
+
+  CF_USERNAME_QA:
+    description: 'Username for the QA environment'
+    required: false
+
+  CF_PASSWORD_QA:
+    description: 'Password for the QA environment'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Pull request merged
+      if: github.event.pull_request.merged == true
+      run: echo "Pull request was merged !"
+      shell: bash
+
+    - name: Check labels to proceed deployment
+      id: proceed-deployment
+      if: contains(github.event.pull_request.labels.*.name, 'deploy')
+      run: echo "Proceed valid"
+      shell: bash
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install project dependencies
+      run: npm install
+      shell: bash
+
+    - name: Install SAP CDS Development Kit (CDS-DK)
+      if: steps.proceed-deployment.conclusion == 'success'
+      run: npm i -g @sap/cds-dk ts-node typescript mbt
+      shell: bash
+
+    - name: Install sync-mta-version dependency
+      if: steps.proceed-deployment.conclusion == 'success'
+      run: npm install -g @dxfrontier/sync-mta-version
+      shell: bash
+
+    - name: Install jq (Command-line JSON Processor)
+      if: steps.proceed-deployment.conclusion == 'success'
+      run: sudo apt-get install -y jq
+      shell: bash
+
+    - name: Install Cloud Foundry Command-Line Interface (CLI)
+      if: steps.proceed-deployment.conclusion == 'success'
+      run: |
+        wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add -
+        echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list
+        apt-get update
+        apt-get install cf8-cli
+      shell: bash
+
+    - name: Install Cloud Foundry Multi-Tenant plugin
+      if: steps.proceed-deployment.conclusion == 'success'
+      run: cf install-plugin -f https://github.com/cloudfoundry-incubator/multiapps-cli-plugin/releases/latest/download/multiapps-plugin.linux64
+      shell: bash
+
+    - name: Verify installed dependencies
+      if: steps.proceed-deployment.conclusion == 'success'
+      run: |
+        cf --version
+        mbt --version
+        cds -v -i
+      shell: bash
+
+    - name: Set Cloud Foundry DEV environment variables
+      if: github.ref == 'refs/heads/dev' && steps.proceed-deployment.conclusion == 'success'
+      run: |
+        echo "CF_API=${{ inputs.CF_API_DEV }}" >> $GITHUB_ENV
+        echo "CF_ORG=${{ inputs.CF_ORG_DEV }}" >> $GITHUB_ENV
+        echo "CF_SPACE=${{ inputs.CF_SPACE_DEV }}" >> $GITHUB_ENV
+        echo "CF_USERNAME=${{ inputs.CF_USERNAME_DEV }}" >> $GITHUB_ENV
+        echo "CF_PASSWORD=${{ inputs.CF_PASSWORD_DEV }}" >> $GITHUB_ENV
+      shell: bash
+
+    # Step to set QA environment
+    - name: Set Cloud Foundry QA environment variables
+      if: github.ref == 'refs/heads/qa' && steps.proceed-deployment.conclusion == 'success'
+      run: |
+        echo "CF_API=${{ inputs.CF_API_QA }}" >> $GITHUB_ENV
+        echo "CF_ORG=${{ inputs.CF_ORG_QA }}" >> $GITHUB_ENV
+        echo "CF_SPACE=${{ inputs.CF_SPACE_QA }}" >> $GITHUB_ENV
+        echo "CF_USERNAME=${{ inputs.CF_USERNAME_QA }}" >> $GITHUB_ENV
+        echo "CF_PASSWORD=${{ inputs.CF_PASSWORD_QA }}" >> $GITHUB_ENV
+      shell: bash
+
+    # Step to set Production environment
+    - name: Set Cloud Foundry PRODUCTION environment variables
+      if: github.ref == 'refs/heads/main' && steps.proceed-deployment.conclusion == 'success'
+      run: |
+        echo "CF_API=${{ inputs.CF_API_PROD }}" >> $GITHUB_ENV
+        echo "CF_ORG=${{ inputs.CF_ORG_PROD }}" >> $GITHUB_ENV
+        echo "CF_SPACE=${{ inputs.CF_SPACE_PROD }}" >> $GITHUB_ENV
+        echo "CF_USERNAME=${{ inputs.CF_USERNAME_PROD }}" >> $GITHUB_ENV
+        echo "CF_PASSWORD=${{ inputs.CF_PASSWORD_PROD }}" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Log in to Cloud Foundry
+      if: steps.proceed-deployment.conclusion == 'success'
+      run: |
+        cf api ${{ env.CF_API }}
+        cf login --origin ${{ inputs.IAS_ORIGIN }} -u ${{ env.CF_USERNAME }} -p ${{ env.CF_PASSWORD }} -o ${{ env.CF_ORG }} -s ${{ env.CF_SPACE }}
+      shell: bash
+
+    # Build the mta artifact
+    - name: Build MTA (Multi-Target Application)
+      if: steps.proceed-deployment.conclusion == 'success'
+      run: mbt build
+      working-directory: ./
+      shell: bash
+
+    # Extract the package.json name property and store it in PACKAGE_NAME for later usage inside of the Deploy
+    - name: Extract Package Name from package.json
+      if: steps.proceed-deployment.conclusion == 'success'
+      run: |
+        PACKAGE_NAME=$(jq -r '.name' package.json)
+        echo "PACKAGE_NAME=${PACKAGE_NAME}" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Get NPM Package Version
+      if: steps.proceed-deployment.conclusion == 'success'
+      id: package-version
+      uses: martinbeentjes/npm-get-version-action@v1.3.1
+
+    - name: Deploy to Cloud Foundry
+      if: steps.proceed-deployment.conclusion == 'success'
+      run: cf deploy mta_archives/${{ env.PACKAGE_NAME }}_${{ steps.package-version.outputs.current-version }}.mtar --abort-on-error
+      shell: bash
