@@ -72,15 +72,17 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Pull request merged
-      if: github.event.pull_request.merged == true
-      run: echo "Pull request was merged !"
-      shell: bash
-
     - name: Check labels to proceed deployment
       id: proceed-deployment
       if: contains(github.event.pull_request.labels.*.name, 'deploy')
-      run: echo "Proceed valid"
+      run: |
+        echo "Label 'deploy' was found."
+        echo "Proceed with deploy to Cloud Foundry ..."
+      shell: bash
+
+    - name: Pull request merged
+      if: github.event.pull_request.merged == true && steps.proceed-deployment.conclusion == 'success'
+      run: echo "Pull request was merged."
       shell: bash
 
     - name: Checkout code
