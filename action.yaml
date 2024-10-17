@@ -102,11 +102,6 @@ runs:
       run: npm i -g @sap/cds-dk ts-node typescript mbt
       shell: bash
 
-    - name: Install sync-mta-version dependency
-      if: steps.proceed-deployment.conclusion == 'success'
-      run: npm install -g @dxfrontier/sync-mta-version
-      shell: bash
-
     - name: Install jq (Command-line JSON Processor)
       if: steps.proceed-deployment.conclusion == 'success'
       run: sudo apt-get install -y jq
@@ -115,10 +110,10 @@ runs:
     - name: Install Cloud Foundry Command-Line Interface (CLI)
       if: steps.proceed-deployment.conclusion == 'success'
       run: |
-        wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add -
+        wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | gpg --dearmor -o /usr/share/keyrings/cli.cloudfoundry.org.gpg
         echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list
-        apt-get update
-        apt-get install cf8-cli
+        sudo apt-get update
+        sudo apt-get install cf8-cli
       shell: bash
 
     - name: Install Cloud Foundry Multi-Tenant plugin
@@ -133,6 +128,26 @@ runs:
         mbt --version
         cds -v -i
       shell: bash
+
+    # Build the mta artifact
+    - name: Build MTA (Multi-Target Application)
+      if: steps.proceed-deployment.conclusion == 'success'
+      run: mbt build
+      working-directory: ./
+      shell: bash
+
+    # Extract the package.json name property and store it in PACKAGE_NAME for later usage inside of the Deploy
+    - name: Extract Package Name from package.json
+      if: steps.proceed-deployment.conclusion == 'success'
+      run: |
+        PACKAGE_NAME=$(jq -r '.name' package.json)
+        echo "PACKAGE_NAME=${PACKAGE_NAME}" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Get NPM Package Version
+      if: steps.proceed-deployment.conclusion == 'success'
+      id: package-version
+      uses: martinbeentjes/npm-get-version-action@v1.3.1
 
     - name: Set Cloud Foundry DEV environment variables
       if: github.ref == 'refs/heads/dev' && steps.proceed-deployment.conclusion == 'success'
@@ -172,26 +187,6 @@ runs:
         cf api ${{ env.CF_API }}
         cf login --origin ${{ inputs.IAS_ORIGIN }} -u ${{ env.CF_USERNAME }} -p ${{ env.CF_PASSWORD }} -o ${{ env.CF_ORG }} -s ${{ env.CF_SPACE }}
       shell: bash
-
-    # Build the mta artifact
-    - name: Build MTA (Multi-Target Application)
-      if: steps.proceed-deployment.conclusion == 'success'
-      run: mbt build
-      working-directory: ./
-      shell: bash
-
-    # Extract the package.json name property and store it in PACKAGE_NAME for later usage inside of the Deploy
-    - name: Extract Package Name from package.json
-      if: steps.proceed-deployment.conclusion == 'success'
-      run: |
-        PACKAGE_NAME=$(jq -r '.name' package.json)
-        echo "PACKAGE_NAME=${PACKAGE_NAME}" >> $GITHUB_ENV
-      shell: bash
-
-    - name: Get NPM Package Version
-      if: steps.proceed-deployment.conclusion == 'success'
-      id: package-version
-      uses: martinbeentjes/npm-get-version-action@v1.3.1
 
     - name: Deploy to Cloud Foundry
       if: steps.proceed-deployment.conclusion == 'success'
