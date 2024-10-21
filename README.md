@@ -42,26 +42,31 @@ This GitHub Action will deploy `SAP CAP project` to Cloud Foundry (`cf`)
 Add the following as a job in your GitHub Actions workflow:
 
 ```yaml
-- name: Bump version and create release
-  uses: dxfrontier/gh-action-deploy-cf@main
-  with:
-    # Common
-    CF_IAS_ORIGIN: ${{ secrets.CF_IAS_ORIGIN }}
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Bump version and create release
+        uses: dxfrontier/gh-action-deploy-cf@main
+        with:
+          # Common
+          CF_IAS_ORIGIN: 'origin'
 
-    # Development
-    CF_API_DEV: ${{ secrets.CF_API_DEV }}
-    CF_ORG_DEV: ${{ secrets.CF_ORG_DEV }}
-    CF_SPACE_DEV: ${{ secrets.CF_SPACE_DEV }}
-    CF_USERNAME_DEV: ${{ secrets.CF_USERNAME_DEV }}
-    CF_PASSWORD_DEV: ${{ secrets.CF_PASSWORD_DEV }}
+          # Development
+          CF_API_DEV: 'dev'
+          CF_ORG_DEV: 'dev'
+          CF_SPACE_DEV: 'dev'
+          CF_USERNAME_DEV: 'dev'
+          CF_PASSWORD_DEV: 'dev'
 
-    # Production
-    CF_API_PROD: ${{ secrets.CF_API_PROD }}
-    CF_ORG_PROD: ${{ secrets.CF_API_PROD }}
-    CF_SPACE_PROD: ${{ secrets.CF_API_PROD }}
-    CF_USERNAME_PROD: ${{ secrets.CF_USERNAME_PROD }}
-    CF_PASSWORD_PROD: ${{ secrets.CF_PASSWORD_PROD }}
-    # QA is optional, added if necessary ...
+          # Production
+          CF_API_PROD: 'prod'
+          CF_ORG_PROD: 'prod'
+          CF_SPACE_PROD: 'prod'
+          CF_USERNAME_PROD: 'prod'
+          CF_PASSWORD_PROD: 'prod'
+
+          # QA is optional, added if necessary ...
 ```
 
 <p align="right">(<a href="#table-of-contents">back to top</a>)</p>
