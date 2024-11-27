@@ -190,7 +190,7 @@ runs:
       if: steps.proceed-deployment.conclusion == 'success'
       run: |
         cf api ${{ env.CF_API }}
-        cf login --origin ${{ inputs.IAS_ORIGIN }} -u ${{ env.CF_USERNAME }} -p ${{ env.CF_PASSWORD }} -o ${{ env.CF_ORG }} -s ${{ env.CF_SPACE }}
+        cf login --origin ${{ inputs.CF_IAS_ORIGIN }} -u ${{ env.CF_USERNAME }} -p ${{ env.CF_PASSWORD }} -o ${{ env.CF_ORG }} -s ${{ env.CF_SPACE }}
       shell: bash
 
     - name: Deploy to Cloud Foundry
