@@ -1,6 +1,6 @@
 <h2> gh-action-deploy-cf </h2>
 
-This GitHub Action will deploy `SAP CAP project` to Cloud Foundry (`cf`)
+This GitHub Action automates the deployment of `SAP CAP projects` to Cloud Foundry (`cf`).
 
 ## Table of Contents
 
@@ -16,32 +16,40 @@ This GitHub Action will deploy `SAP CAP project` to Cloud Foundry (`cf`)
 
 ### Parameters
 
-| Parameter          | Description                                                                                  |
-| ------------------ | -------------------------------------------------------------------------------------------- |
-| `CF_IAS_ORIGIN`    | The origin to be used for IAS authentication when logging into Cloud Foundry.                |
-| `CF_API_DEV`       | The API endpoint for the development Cloud Foundry environment.                              |
-| `CF_ORG_DEV`       | The organization for the development environment in Cloud Foundry.                           |
-| `CF_SPACE_DEV`     | The space within the development organization in Cloud Foundry.                              |
-| `CF_USERNAME_DEV`  | The username for logging into the development environment in Cloud Foundry.                  |
-| `CF_PASSWORD_DEV`  | The password for logging into the development environment in Cloud Foundry.                  |
-| `CF_API_PROD`      | The API endpoint for the production Cloud Foundry environment.                               |
-| `CF_ORG_PROD`      | The organization for the production environment in Cloud Foundry.                            |
-| `CF_SPACE_PROD`    | The space within the production organization in Cloud Foundry.                               |
-| `CF_USERNAME_PROD` | The username for logging into the production environment in Cloud Foundry.                   |
-| `CF_PASSWORD_PROD` | The password for logging into the production environment in Cloud Foundry.                   |
-| `CF_API_QA`        | (Optional) The API endpoint for the QA Cloud Foundry environment, if applicable.             |
-| `CF_ORG_QA`        | (Optional) The organization for the QA environment in Cloud Foundry, if applicable.          |
-| `CF_SPACE_QA`      | (Optional) The space within the QA organization in Cloud Foundry, if applicable.             |
-| `CF_USERNAME_QA`   | (Optional) The username for logging into the QA environment in Cloud Foundry, if applicable. |
-| `CF_PASSWORD_QA`   | (Optional) The password for logging into the QA environment in Cloud Foundry, if applicable. |
+| Parameter          | Required | Description                                                                       |
+| ------------------ | -------- | --------------------------------------------------------------------------------- |
+| `CF_API_DEV`       | Yes      | The API endpoint for the development Cloud Foundry environment.                   |
+| `CF_ORG_DEV`       | Yes      | The organization for the development environment in Cloud Foundry.                |
+| `CF_SPACE_DEV`     | Yes      | The space within the development organization in Cloud Foundry.                   |
+| `CF_USERNAME_DEV`  | Yes      | The username for logging into the development environment in Cloud Foundry.       |
+| `CF_PASSWORD_DEV`  | Yes      | The password for logging into the development environment in Cloud Foundry.       |
+| `CF_API_PROD`      | Yes      | The API endpoint for the production Cloud Foundry environment.                    |
+| `CF_ORG_PROD`      | Yes      | The organization for the production environment in Cloud Foundry.                 |
+| `CF_SPACE_PROD`    | Yes      | The space within the production organization in Cloud Foundry.                    |
+| `CF_USERNAME_PROD` | Yes      | The username for logging into the production environment in Cloud Foundry.        |
+| `CF_PASSWORD_PROD` | Yes      | The password for logging into the production environment in Cloud Foundry.        |
+| `CF_API_QA`        | Optional | The API endpoint for the QA Cloud Foundry environment, if applicable.             |
+| `CF_ORG_QA`        | Optional | The organization for the QA environment in Cloud Foundry, if applicable.          |
+| `CF_SPACE_QA`      | Optional | The space within the QA organization in Cloud Foundry, if applicable.             |
+| `CF_USERNAME_QA`   | Optional | The username for logging into the QA environment in Cloud Foundry, if applicable. |
+| `CF_PASSWORD_QA`   | Optional | The password for logging into the QA environment in Cloud Foundry, if applicable. |
+| `CF_IAS_ORIGIN`    | Optional | The origin to be used for IAS authentication when logging into Cloud Foundry.     |
 
 <p align="right">(<a href="#table-of-contents">back to top</a>)</p>
 
 ### Example
 
-Add the following as a job in your GitHub Actions workflow:
+To use this GitHub Action, add the following job to your workflow:
 
 ```yaml
+name: Release
+on:
+  pull_request:
+    branches:
+      - main # Change branch if main is not the main branch
+    types:
+      - closed
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -49,25 +57,28 @@ jobs:
       - name: Bump version and create release
         uses: dxfrontier/gh-action-deploy-cf@main
         with:
-          # Common
-          CF_IAS_ORIGIN: 'origin'
-
           # Development
-          CF_API_DEV: 'dev'
-          CF_ORG_DEV: 'dev'
-          CF_SPACE_DEV: 'dev'
-          CF_USERNAME_DEV: 'dev'
-          CF_PASSWORD_DEV: 'dev'
+          CF_API_DEV: ${{ secrets.CF_API_DEV }}
+          CF_ORG_DEV: ${{ secrets.CF_ORG_DEV }}
+          CF_SPACE_DEV: ${{ secrets.CF_SPACE_DEV }}
+          CF_USERNAME_DEV: ${{ secrets.CF_USERNAME_DEV }}
+          CF_PASSWORD_DEV: ${{ secrets.CF_PASSWORD_DEV }}
 
           # Production
-          CF_API_PROD: 'prod'
-          CF_ORG_PROD: 'prod'
-          CF_SPACE_PROD: 'prod'
-          CF_USERNAME_PROD: 'prod'
-          CF_PASSWORD_PROD: 'prod'
+          CF_API_PROD: ${{ secrets.CF_API_PROD }}
+          CF_ORG_PROD: ${{ secrets.CF_ORG_PROD }}
+          CF_SPACE_PROD: ${{ secrets.CF_SPACE_PROD }}
+          CF_USERNAME_PROD: ${{ secrets.CF_USERNAME_PROD }}
+          CF_PASSWORD_PROD: ${{ secrets.CF_PASSWORD_PROD }}
 
           # QA is optional, added if necessary ...
+          # CF_IAS_ORIGIN is optional, add if necessary ...
 ```
+
+> [!IMPORTANT]
+> All Cloud Foundry credentials `secrets` must be securely stored in your repository.
+>
+> Avoid hardcoding sensitive data in workflows to maintain security and compliance.
 
 <p align="right">(<a href="#table-of-contents">back to top</a>)</p>
 
