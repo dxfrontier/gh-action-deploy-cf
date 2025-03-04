@@ -42,13 +42,13 @@ inputs:
     description: 'Password for the production environment'
     required: true
 
-  CF_IAS_ORIGIN:
-    description: 'IAS origin for authentication'
-    required: true
-
   # ############################################################
 
   # Not mandatory
+  CF_IAS_ORIGIN:
+    description: 'IAS origin for authentication'
+    required: false
+
   CF_API_QA:
     description: 'API endpoint for the QA environment'
     required: false
@@ -190,7 +190,12 @@ runs:
       if: steps.proceed-deployment.conclusion == 'success'
       run: |
         cf api ${{ env.CF_API }}
-        cf login --origin ${{ inputs.CF_IAS_ORIGIN }} -u ${{ env.CF_USERNAME }} -p ${{ env.CF_PASSWORD }} -o "${{ env.CF_ORG }}" -s ${{ env.CF_SPACE }}
+
+        if [[ -n "${{ env.CF_IAS_ORIGIN }}" ]]; then
+          cf login --origin ${{ env.CF_IAS_ORIGIN }} -u ${{ env.CF_USERNAME }} -p ${{ env.CF_PASSWORD }} -o "${{ env.CF_ORG }}" -s ${{ env.CF_SPACE }}
+        else
+          cf login -u ${{ env.CF_USERNAME }} -p ${{ env.CF_PASSWORD }} -o "${{ env.CF_ORG }}" -s ${{ env.CF_SPACE }}
+        fi
       shell: bash
 
     - name: Deploy to Cloud Foundry
